@@ -26,7 +26,7 @@ export default function Assessment() {
       setError('');
       setLoading(true);
       try {
-        const data = await getCompetencies();
+        const data = await getCompetencies(targetRoleId);
         const arr = Array.isArray(data) ? data : [];
         // Initialize user levels from existing assessment or default 0
         const withLevels = arr.map((c) => {
@@ -58,7 +58,7 @@ export default function Assessment() {
   async function handleSubmit(e) {
     e.preventDefault();
     try {
-      await submitAssessment(competencies);
+      await submitAssessment(competencies, { targetRoleId });
     } catch {
       // proceed even if backend doesn't persist assessment
     }

@@ -130,30 +130,110 @@ export async function selectRoles(currentRoleId, targetRoleId) {
   return res.data;
 }
 
-// PUBLIC_INTERFACE
-export async function getCompetencies() {
-  /** Retrieve competencies for selected roles. */
+ // PUBLIC_INTERFACE
+export async function getCompetencies(roleId = null) {
+  /** Retrieve competencies. If roleId provided, uses by-role with required levels from backend. */
+  if (roleId != null) {
+    const params = new URLSearchParams();
+    params.set('role_id', String(roleId));
+    const res = await tryEndpoints(
+      [`/competencies/by-role?${params.toString()}`, '/competencies'],
+      'get'
+    );
+    return res.data;
+  }
   const res = await tryEndpoints(['/competencies'], 'get');
   return res.data;
 }
 
-// PUBLIC_INTERFACE
-export async function submitAssessment(competencies) {
-  /** Submit competency assessment. Tries /competencies/assess then /competency-assessment. */
-  const res = await tryEndpoints(
-    ['/competencies/assess', '/competency-assessment'],
-    'post',
-    competencies
-  );
-  return res.data;
+ // PUBLIC_INTERFACE
+export async function submitAssessment(competencies, { targetRoleId = null } = {}) {
+  /** Submit competency assessment.
+   * Primary: POST /competency-assessment with shape { target_role_id?, competencies: [{competency_id, level}] }
+   * Fallback: POST /competencies/assess with a looser array shape for broader compatibility.
+   */
+  // Normalize to API v1 expected shape
+  const normalized = Array.isArray(competencies)
+    ? competencies.map((c) => {
+        const idNum =
+          typeof c.id === 'number'
+            ? c.id
+            : Number.isFinite(Number(c.id))
+            ? Number(c.id)
+            : c.competency_id;
+        const levelNum =
+          typeof c.proficiencyLevel === 'number'
+            ? c.proficiencyLevel
+            : Number.isFinite(Number(c.level))
+            ? Number(c.level)
+            : 0;
+        return { competency_id: idNum, level: levelNum };
+      }).filter((x) => Number.isFinite(x?.competency_id))
+    : [];
+
+  const payloadV1 = {
+    ...(targetRoleId != null ? { target_role_id: Number(targetRoleId) } : {}),
+    competencies: normalized
+  };
+
+  try {
+    const res = await tryEndpoints(['/competency-assessment'], 'post', payloadV1);
+    return res.data;
+  } catch {
+    // Broad fallback to older/alternate endpoint shapes
+    const fallbackArray = Array.isArray(competencies)
+      ? competencies.map((c) => ({
+          id: c.id ?? c.competency_id,
+          competency_id: c.competency_id ?? c.id,
+          level: c.proficiencyLevel ?? c.level ?? 0,
+          name: c.name
+        }))
+      : competencies;
+    const res = await tryEndpoints(['/competencies/assess'], 'post', fallbackArray);
+    return res.data;
+  }
 }
 
-// PUBLIC_INTERFACE
+ // PUBLIC_INTERFACE
 export async function performGapAnalysis(currentCompetencies, targetRoleId) {
-  /** Perform gap analysis for current competencies vs target role. */
-  const body = { currentCompetencies, targetRoleId };
-  const res = await tryEndpoints(['/gap-analysis'], 'post', body);
-  return res.data;
+  /** Perform gap analysis for current competencies vs target role.
+   * Primary: snake_case keys per /api/v1/gap-analysis (GapAnalysisRequest).
+   * Fallback: camelCase keys for broader compatibility.
+   */
+  const normalized = Array.isArray(currentCompetencies)
+    ? currentCompetencies.map((c) => {
+        const idNum =
+          typeof c.id === 'number'
+            ? c.id
+            : Number.isFinite(Number(c.id))
+            ? Number(c.id)
+            : c.competency_id;
+        const levelNum =
+          typeof c.proficiencyLevel === 'number'
+            ? c.proficiencyLevel
+            : Number.isFinite(Number(c.level))
+            ? Number(c.level)
+            : 0;
+        return { competency_id: idNum, level: levelNum };
+      }).filter((x) => Number.isFinite(x?.competency_id))
+    : [];
+
+  const snake = {
+    target_role_id: Number(targetRoleId),
+    current_competencies: normalized
+  };
+
+  try {
+    const res = await tryEndpoints(['/gap-analysis'], 'post', snake);
+    return res.data;
+  } catch {
+    const camel = {
+      currentCompetencies,
+      targetRoleId
+    };
+    const res = await tryEndpoints(['/gap-analysis'], 'post', camel);
+    return res.data;
+  }
 }
 
 // PUBLIC_INTERFACE

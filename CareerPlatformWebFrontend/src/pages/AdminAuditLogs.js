@@ -45,10 +45,10 @@ export default function AdminAuditLogs() {
               <tbody>
                 {logs.map((l, idx) => (
                   <tr key={l.id || idx}>
-                    <td>{l.timestamp || ''}</td>
-                    <td>{l.user || l.userId || ''}</td>
+                    <td>{l.created_at || l.timestamp || ''}</td>
+                    <td>{l.user || l.user_id || l.userId || ''}</td>
                     <td>{l.action || ''}</td>
-                    <td>{[l.entityType, l.entityId].filter(Boolean).join(':')}</td>
+                    <td>{[(l.entity_type || l.entityType), (l.entity_id || l.entityId)].filter(Boolean).join(':')}</td>
                   </tr>
                 ))}
               </tbody>
