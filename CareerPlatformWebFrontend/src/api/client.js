@@ -1,10 +1,15 @@
 import axios from 'axios';
 
 // Ensure the base URL always points at the FastAPI versioned routes (/api/v1)
-// If REACT_APP_API_URL is provided without /api/v1, append it.
+// Supports REACT_APP_API_URL, REACT_APP_API_BASE, or REACT_APP_BACKEND_URL.
 // If not provided, fall back to relative '/api/v1' which will use CRA proxy in dev.
 function computeBaseURL() {
-  const raw = process.env.REACT_APP_API_URL;
+  const raw =
+    process.env.REACT_APP_API_URL ||
+    process.env.REACT_APP_API_BASE ||
+    process.env.REACT_APP_BACKEND_URL ||
+    '';
+
   if (!raw) return '/api/v1';
   try {
     const url = new URL(raw, window.location.origin);
@@ -113,7 +118,7 @@ export async function updateProfile(payload) {
 // PUBLIC_INTERFACE
 export async function getRoles() {
   /** Retrieve list of roles. */
-  const res = await tryEndpoints(['/roles', '/api/v1/roles'], 'get');
+  const res = await tryEndpoints(['/roles'], 'get');
   return res.data;
 }
 
@@ -173,14 +178,14 @@ export async function exportDevelopmentPlan(format = 'link') {
 // PUBLIC_INTERFACE
 export async function getTemplates() {
   /** Admin: list templates. */
-  const res = await tryEndpoints(['/templates'], 'get');
+  const res = await tryEndpoints(['/admin/templates'], 'get');
   return res.data;
 }
 
 // PUBLIC_INTERFACE
 export async function createTemplate(template) {
   /** Admin: create/edit template. */
-  const res = await tryEndpoints(['/templates'], 'post', template);
+  const res = await tryEndpoints(['/admin/templates'], 'post', template);
   return res.data;
 }
 
@@ -191,4 +196,26 @@ export async function getAuditLogs() {
   return res.data;
 }
 
+// PUBLIC_INTERFACE
+export async function getRoleAdjacency(role, { limit = 10, min_score = 0.0 } = {}) {
+  /** Get adjacent role suggestions for a given role (name or ID). */
+  const params = new URLSearchParams();
+  params.set('role', String(role));
+  if (limit != null) params.set('limit', String(limit));
+  if (min_score != null) params.set('min_score', String(min_score));
+  const res = await tryEndpoints([`/role-adjacency?${params.toString()}`], 'get');
+  return res.data; // { role, total, items: [{ role, score, ...}] }
+}
+
+// PUBLIC_INTERFACE
+export async function getRoleAdjacencyDetails(currentRole, targetRole) {
+  /** Get detailed adjacency comparison for two roles. */
+  const params = new URLSearchParams();
+  params.set('current_role', String(currentRole));
+  params.set('target_role', String(targetRole));
+  const res = await tryEndpoints([`/role-adjacency/details?${params.toString()}`], 'get');
+  return res.data;
+}
+
+export { BASE_URL };
 export default api;

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext';
  * NavBar renders top navigation; adjusts based on authentication state.
  */
 export default function NavBar() {
-  const { isAuthenticated, logout } = useAuth();
+  const { isAuthenticated, isAdmin, logout } = useAuth();
 
   return (
     <nav className="navbar" aria-label="Main">
@@ -21,8 +21,12 @@ export default function NavBar() {
             <li role="none"><Link role="menuitem" to="/assessment">Assessment</Link></li>
             <li role="none"><Link role="menuitem" to="/gap">Gap Analysis</Link></li>
             <li role="none"><Link role="menuitem" to="/plan">Development Plan</Link></li>
-            <li role="none"><Link role="menuitem" to="/admin/templates">Templates</Link></li>
-            <li role="none"><Link role="menuitem" to="/admin/audit">Audit Logs</Link></li>
+            {isAdmin && (
+              <>
+                <li role="none"><Link role="menuitem" to="/admin/templates">Templates</Link></li>
+                <li role="none"><Link role="menuitem" to="/admin/audit">Audit Logs</Link></li>
+              </>
+            )}
           </ul>
         )}
         <div className="nav-actions">

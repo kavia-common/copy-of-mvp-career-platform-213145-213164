@@ -10,7 +10,7 @@ import GapAnalysis from './pages/GapAnalysis';
 import DevelopmentPlan from './pages/DevelopmentPlan';
 import AdminTemplates from './pages/AdminTemplates';
 import AdminAuditLogs from './pages/AdminAuditLogs';
-import { RequireAuth, useAuth } from './context/AuthContext';
+import { RequireAuth, RequireAdmin, useAuth } from './context/AuthContext';
 
 // PUBLIC_INTERFACE
 function App() {
@@ -69,17 +69,17 @@ function App() {
           <Route
             path="/admin/templates"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <AdminTemplates />
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
           <Route
             path="/admin/audit"
             element={
-              <RequireAuth>
+              <RequireAdmin>
                 <AdminAuditLogs />
-              </RequireAuth>
+              </RequireAdmin>
             }
           />
 
