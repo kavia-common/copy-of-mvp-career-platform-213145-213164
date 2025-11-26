@@ -73,11 +73,23 @@ After changing these settings, restart the dev server to apply them.
 ## Environment configuration
 
 - Copy `CareerPlatformWebFrontend/.env.example` to `.env` (or `.env.development.local`) and adjust values to your environment.
-- Backend API base:
-  - `REACT_APP_API_URL`: e.g., `http://localhost:3001`
-  - The app will append `/api/v1` automatically if missing, or default to relative `/api/v1` using CRA proxy in dev.
-- Proxy configuration during development:
+- Backend API base (the frontend supports multiple env names; use one of the following):
+  - `REACT_APP_API_URL` (preferred), or
+  - `REACT_APP_API_BASE`, or
+  - `REACT_APP_BACKEND_URL`
+  - Example: `http://localhost:3001`
+- Base URL normalization (to avoid double-prefixing):
+  - The frontend will ensure all requests hit the versioned API by appending `/api/v1` if it's not present.
+  - If your env var already ends with `/api/v1`, it will not be appended again.
+  - If no env var is set, it will default to the relative base `/api/v1`, which works with CRA proxy in development.
+- Development defaults:
   - CRA will proxy API requests to the backend using the `"proxy"` field in `package.json` (currently `http://localhost:3001`).
+  - In dev, you can omit env vars entirely and rely on the proxy (the frontend will call relative `/api/v1/...`).
+- Production guidance:
+  - Set `REACT_APP_API_URL` to the backend origin (either with or without `/api/v1`, both are accepted by the app).
+  - Examples:
+    - `REACT_APP_API_URL=http://backend.example.com` → app will call `http://backend.example.com/api/v1/...`
+    - `REACT_APP_API_URL=https://api.example.com/api/v1` → app will call `https://api.example.com/api/v1/...`
 
 ## Customization
 
