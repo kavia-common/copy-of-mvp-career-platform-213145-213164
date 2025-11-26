@@ -1,0 +1,4 @@
+{
+    "command": "npm install && npx tsc --noEmit && npm test -- --ci",
+    "working_directory": "/home/kavia/workspace/code-generation/copy-of-mvp-career-platform-213145-213164/CareerPlatformWebFrontend"
+}
