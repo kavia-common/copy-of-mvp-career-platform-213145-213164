@@ -49,13 +49,17 @@ async function tryEndpoints(endpoints, method = 'get', data = undefined, config 
 
 // PUBLIC_INTERFACE
 export async function login(email, password) {
-  /** Authenticate user and return JWT token string. Tries /auth/login then /login. */
-  const res = await tryEndpoints(
-    ['/auth/login', '/login'].map(p => p.startsWith('/api') ? p : p),
-    'post',
-    { email, password }
-  );
-  return res.data; // { token }
+  /** Authenticate user and return JWT token string. Tries /auth/login then /login. Normalizes to { token }. */
+  const res = await tryEndpoints(['/auth/login', '/login'], 'post', { email, password });
+  const data = res?.data || {};
+  // FastAPI backend returns { access_token, token_type }
+  if (data.access_token) {
+    return { token: data.access_token, token_type: data.token_type || 'bearer' };
+  }
+  // Fallbacks for other shapes
+  if (data.token) return data;
+  if (data.accessToken) return { token: data.accessToken };
+  return data;
 }
 
 // PUBLIC_INTERFACE
@@ -77,15 +81,15 @@ export async function logout() {
 
 // PUBLIC_INTERFACE
 export async function getProfile() {
-  /** Fetch current user profile. */
-  const res = await tryEndpoints(['/profile'], 'get');
+  /** Fetch current user profile. Prefer /auth/profile under API v1. */
+  const res = await tryEndpoints(['/auth/profile', '/profile'], 'get');
   return res.data;
 }
 
 // PUBLIC_INTERFACE
 export async function updateProfile(payload) {
-  /** Update current user profile. */
-  const res = await tryEndpoints(['/profile'], 'put', payload);
+  /** Update current user profile. Prefer /auth/profile under API v1. */
+  const res = await tryEndpoints(['/auth/profile', '/profile'], 'put', payload);
   return res.data;
 }
 
@@ -165,8 +169,8 @@ export async function createTemplate(template) {
 
 // PUBLIC_INTERFACE
 export async function getAuditLogs() {
-  /** Admin: retrieve audit logs. Tries /audit-logs then /admin/audit-log. */
-  const res = await tryEndpoints(['/audit-logs', '/admin/audit-log'], 'get');
+  /** Admin: retrieve audit logs. Prefer /admin/audit-logs (FastAPI). */
+  const res = await tryEndpoints(['/admin/audit-logs', '/admin/audit-log', '/audit-logs'], 'get');
   return res.data;
 }
 
