@@ -47,6 +47,38 @@ Notes:
 - The compose file passes `REACT_APP_API_URL=${FRONTEND_API_URL}` so the frontend will call the backend correctly from the browser.
 - The backend depends on the Node mapping service for role adjacency features.
 
+## Fixing “Invalid Host header” (proxy/preview environments)
+
+When running Create React App behind a proxy, cloud IDE preview URL, or tunneling service, the dev server may reject requests with:
+“Invalid Host header”.
+
+This project’s `npm start` is preconfigured to allow non-localhost hosts safely for development:
+
+- It binds to all interfaces: `HOST=0.0.0.0`
+- It disables the strict host check only in development: `DANGEROUSLY_DISABLE_HOST_CHECK=true`
+
+You can see these in `package.json`:
+- `start`: uses `cross-env HOST=0.0.0.0 DANGEROUSLY_DISABLE_HOST_CHECK=true react-scripts start`
+- `start:strict`: runs the default CRA dev server with host check enabled
+
+If your environment requires HTTPS or a specific port:
+- Set `PORT=3000` (or another port) in your `.env` or command
+- Optionally set `HTTPS=true` (requires certs; see CRA docs)
+
+If you maintain a custom dev server configuration (e.g., ejected or custom tooling), set:
+- `allowedHosts: 'all'` in your `devServer` config
+
+After changing these settings, restart the dev server to apply them.
+
+## Environment configuration
+
+- Copy `CareerPlatformWebFrontend/.env.example` to `.env` (or `.env.development.local`) and adjust values to your environment.
+- Backend API base:
+  - `REACT_APP_API_URL`: e.g., `http://localhost:3001`
+  - The app will append `/api/v1` automatically if missing, or default to relative `/api/v1` using CRA proxy in dev.
+- Proxy configuration during development:
+  - CRA will proxy API requests to the backend using the `"proxy"` field in `package.json` (currently `http://localhost:3001`).
+
 ## Customization
 
 ### Colors
