@@ -7,10 +7,25 @@ import { useJourney } from '../context/JourneyContext';
  * PUBLIC_INTERFACE
  * RoleSelection lets user pick current and target roles from backend-provided list,
  * and shows suggested adjacent target roles based on the selected current role.
+ * 
+ * Notes:
+ * - We now always store role selections as numeric IDs to align with backend
+ *   endpoints that require integers (e.g., /api/v1/competencies/by-role?role_id=...).
+ * - For role adjacency lookups we prefer sending the role name to the backend,
+ *   with an ID fallback. This improves hit-rate when the mapping service is
+ *   tuned on names but still supports IDs.
  */
 export default function RoleSelection() {
   const navigate = useNavigate();
-  const { currentRoleId, setCurrentRoleId, targetRoleId, setTargetRoleId, setAssessment, setGapResult, setDevelopmentPlan } = useJourney();
+  const {
+    currentRoleId,
+    setCurrentRoleId,
+    targetRoleId,
+    setTargetRoleId,
+    setAssessment,
+    setGapResult,
+    setDevelopmentPlan
+  } = useJourney();
 
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -20,15 +35,16 @@ export default function RoleSelection() {
   const [adjError, setAdjError] = useState('');
   const [adjSuggestions, setAdjSuggestions] = useState([]); // [{role, score, ...}]
 
+  // Index roles for fast lookup by id and by name
   const rolesById = useMemo(() => {
     const map = new Map();
-    roles.forEach(r => map.set(String(r.id ?? r.name), r));
+    roles.forEach((r) => map.set(String(r.id), r));
     return map;
   }, [roles]);
 
   const rolesByName = useMemo(() => {
     const map = new Map();
-    roles.forEach(r => map.set(String(r.name), r));
+    roles.forEach((r) => map.set(String(r.name), r));
     return map;
   }, [roles]);
 
@@ -47,7 +63,7 @@ export default function RoleSelection() {
     })();
   }, []);
 
-  // Load adjacency suggestions whenever current role changes
+  // Load adjacency suggestions whenever current role changes (prefer role name)
   useEffect(() => {
     let cancelled = false;
     async function loadAdjacency() {
@@ -58,8 +74,11 @@ export default function RoleSelection() {
       setAdjLoading(true);
       setAdjError('');
       try {
-        // backend supports role as name or numeric id; pass selected id/name
-        const resp = await getRoleAdjacency(currentRoleId, { limit: 6, min_score: 0.0 });
+        // Prefer name for better mapping; fallback to ID
+        const key = String(currentRoleId);
+        const roleObj = rolesById.get(key);
+        const roleParam = roleObj?.name ?? currentRoleId;
+        const resp = await getRoleAdjacency(roleParam, { limit: 6, min_score: 0.0 });
         const items = Array.isArray(resp?.items) ? resp.items : [];
         if (!cancelled) setAdjSuggestions(items);
       } catch (err) {
@@ -72,13 +91,15 @@ export default function RoleSelection() {
       }
     }
     loadAdjacency();
-    return () => { cancelled = true; };
-  }, [currentRoleId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [currentRoleId, rolesById]);
 
   function onPickSuggestion(roleName) {
     const match = rolesByName.get(String(roleName));
     if (match?.id != null) {
-      setTargetRoleId(match.id);
+      setTargetRoleId(Number(match.id));
     }
   }
 
@@ -113,13 +134,13 @@ export default function RoleSelection() {
                 <label htmlFor="current-role">Current role</label>
                 <select
                   id="current-role"
-                  value={currentRoleId || ''}
-                  onChange={(e) => setCurrentRoleId(e.target.value)}
+                  value={currentRoleId ?? ''}
+                  onChange={(e) => setCurrentRoleId(Number(e.target.value))}
                   required
                 >
                   <option value="" disabled>Select current role</option>
                   {roles.map((r) => (
-                    <option key={r.id || r.name} value={r.id || r.name}>{r.name}</option>
+                    <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
               </div>
@@ -128,13 +149,13 @@ export default function RoleSelection() {
                 <label htmlFor="target-role">Target role</label>
                 <select
                   id="target-role"
-                  value={targetRoleId || ''}
-                  onChange={(e) => setTargetRoleId(e.target.value)}
+                  value={targetRoleId ?? ''}
+                  onChange={(e) => setTargetRoleId(Number(e.target.value))}
                   required
                 >
                   <option value="" disabled>Select target role</option>
                   {roles.map((r) => (
-                    <option key={r.id || r.name} value={r.id || r.name}>{r.name}</option>
+                    <option key={r.id} value={r.id}>{r.name}</option>
                   ))}
                 </select>
               </div>
@@ -157,7 +178,11 @@ export default function RoleSelection() {
               {!adjLoading && !adjError && adjSuggestions.length > 0 && (
                 <ul className="list" aria-label="Suggested roles">
                   {adjSuggestions.map((s, idx) => (
-                    <li key={`${s.role}-${idx}`} className="card" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <li
+                      key={`${s.role}-${idx}`}
+                      className="card"
+                      style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                    >
                       <div>
                         <strong>{s.role}</strong>
                         {typeof s.score === 'number' && (
