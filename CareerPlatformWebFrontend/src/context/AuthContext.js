@@ -55,26 +55,33 @@ export function AuthProvider({ children }) {
     /** Authenticate user and store JWT token. After storing, quickly verify with /auth/profile. */
     setAuthLoading(true);
     setAuthError('');
-    const data = await apiLogin(email, password);
-    if (data?.token) {
-      setToken(data.token);
-      // Ensure interceptor sees token immediately for the follow-up call
-      window.localStorage.setItem('token', data.token);
-      try {
-        // Quick verification call that also validates CORS and auth header handling
-        const profile = await apiGetProfile();
-        setUser(profile || null);
-      } catch (err) {
-        // If token invalid, clear and surface error
-        setToken('');
-        window.localStorage.removeItem('token');
-        setUser(null);
-        setAuthLoading(false);
-        throw err;
+    try {
+      const data = await apiLogin(email, password);
+      if (data?.token) {
+        setToken(data.token);
+        // Ensure interceptor sees token immediately for the follow-up call
+        window.localStorage.setItem('token', data.token);
+        try {
+          // Quick verification call that also validates CORS and auth header handling
+          const profile = await apiGetProfile();
+          setUser(profile || null);
+        } catch (err) {
+          // If token invalid, clear and surface error
+          setToken('');
+          window.localStorage.removeItem('token');
+          setUser(null);
+          throw err;
+        }
+      } else {
+        throw new Error('Invalid login response');
       }
+      return data;
+    } catch (err) {
+      setAuthError(err?.message || 'Login failed');
+      throw err;
+    } finally {
+      setAuthLoading(false);
     }
-    setAuthLoading(false);
-    return data;
   }, []);
 
   // PUBLIC_INTERFACE
