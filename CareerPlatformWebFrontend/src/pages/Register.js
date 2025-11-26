@@ -23,7 +23,7 @@ export default function Register() {
     setOk(false);
     setLoading(true);
     try {
-      await register({ email, password, name });
+      await register({ email, password, full_name: name });
       setOk(true);
       setTimeout(() => navigate('/login'), 800);
     } catch (err) {

@@ -1,6 +1,23 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || '/api/v1';
+// Ensure the base URL always points at the FastAPI versioned routes (/api/v1)
+// If REACT_APP_API_URL is provided without /api/v1, append it.
+// If not provided, fall back to relative '/api/v1' which will use CRA proxy in dev.
+function computeBaseURL() {
+  const raw = process.env.REACT_APP_API_URL;
+  if (!raw) return '/api/v1';
+  try {
+    const url = new URL(raw, window.location.origin);
+    const endsWithV1 = url.pathname.endsWith('/api/v1') || url.pathname.endsWith('/api/v1/');
+    url.pathname = endsWithV1 ? url.pathname.replace(/\/$/, '') : `${url.pathname.replace(/\/$/, '')}/api/v1`;
+    return url.toString().replace(/\/$/, '');
+  } catch {
+    const path = raw.replace(/\/$/, '');
+    return path.endsWith('/api/v1') ? path : `${path}/api/v1`;
+  }
+}
+
+const BASE_URL = computeBaseURL();
 
 // Create a pre-configured axios instance
 const api = axios.create({
@@ -49,14 +66,14 @@ async function tryEndpoints(endpoints, method = 'get', data = undefined, config 
 
 // PUBLIC_INTERFACE
 export async function login(email, password) {
-  /** Authenticate user and return JWT token string. Tries /auth/login then /login. Normalizes to { token }. */
-  const res = await tryEndpoints(['/auth/login', '/login'], 'post', { email, password });
+  /** Authenticate user and return JWT token string. Uses /auth/login (FastAPI). Normalizes to { token }. */
+  const res = await tryEndpoints(['/auth/login'], 'post', { email, password });
   const data = res?.data || {};
   // FastAPI backend returns { access_token, token_type }
   if (data.access_token) {
     return { token: data.access_token, token_type: data.token_type || 'bearer' };
   }
-  // Fallbacks for other shapes
+  // Fallbacks for other shapes (if backend changes)
   if (data.token) return data;
   if (data.accessToken) return { token: data.accessToken };
   return data;
@@ -64,8 +81,8 @@ export async function login(email, password) {
 
 // PUBLIC_INTERFACE
 export async function register(user) {
-  /** Register user; expects {email, password, name?}. Tries /auth/register then /register. */
-  const res = await tryEndpoints(['/auth/register', '/register'], 'post', user);
+  /** Register user; expects {email, password, full_name?}. Uses /auth/register (FastAPI). */
+  const res = await tryEndpoints(['/auth/register'], 'post', user);
   return res.data;
 }
 

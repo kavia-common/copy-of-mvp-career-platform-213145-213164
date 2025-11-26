@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useLocation, Navigate } from 'react-router-dom';
-import { login as apiLogin, register as apiRegister, logout as apiLogout } from '../api/client';
+import { login as apiLogin, register as apiRegister, logout as apiLogout, getProfile as apiGetProfile } from '../api/client';
 
 // PUBLIC_INTERFACE
 export const AuthContext = createContext(null);
@@ -23,10 +23,21 @@ export function AuthProvider({ children }) {
 
   // PUBLIC_INTERFACE
   const login = useCallback(async (email, password) => {
-    /** Authenticate user and store JWT token. */
+    /** Authenticate user and store JWT token. After storing, quickly verify with /auth/profile. */
     const data = await apiLogin(email, password);
     if (data?.token) {
       setToken(data.token);
+      // Ensure interceptor sees token immediately for the follow-up call
+      window.localStorage.setItem('token', data.token);
+      try {
+        // Quick verification call that also validates CORS and auth header handling
+        await apiGetProfile();
+      } catch (err) {
+        // If token invalid, clear and surface error
+        setToken('');
+        window.localStorage.removeItem('token');
+        throw err;
+      }
     }
     return data;
   }, []);
